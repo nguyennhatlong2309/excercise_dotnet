@@ -1,0 +1,98 @@
+@inherits LayoutComponentBase
+@inject CartService CartService
+@implements IDisposable
+
+<div class="min-vh-100 d-flex flex-column">
+    
+    <!-- Top Header Navigation -->
+    <NavMenu />
+
+    <!-- Main Page Body Content -->
+    <main class="flex-grow-1 container-xl pb-5">
+        @Body
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-5 border-top border-secondary border-opacity-10" style="background: var(--bg-surface);">
+        <div class="container-xl">
+            <div class="row g-4 mb-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-cpu-fill fs-4 text-primary"></i>
+                        <span class="fs-4 font-heading fw-bold text-white">NEXUS STORE</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Cửa hàng bán lẻ thiết bị công nghệ & phụ kiện cao cấp. Trải nghiệm mua sắm trực tuyến hiện đại, nhanh chóng và tin cậy trên nền tảng Blazor.
+                    </p>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="text-white font-heading fw-bold mb-3">Danh Mục</h6>
+                    <ul class="list-unstyled small d-flex flex-column gap-2 text-muted">
+                        <li><a href="products?cat=Điện+thoại" class="text-reset text-decoration-none">Điện thoại Flagship</a></li>
+                        <li><a href="products?cat=Laptop" class="text-reset text-decoration-none">Laptop & Tablet</a></li>
+                        <li><a href="products?cat=Tai+nghe" class="text-reset text-decoration-none">Tai nghe & Audio</a></li>
+                        <li><a href="products?cat=Phụ+kiện" class="text-reset text-decoration-none">Phụ kiện công nghệ</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h6 class="text-white font-heading fw-bold mb-3">Chính Sách & Hỗ Trợ</h6>
+                    <ul class="list-unstyled small d-flex flex-column gap-2 text-muted">
+                        <li><i class="bi bi-shield-check text-emerald me-1"></i> Bảo hành 12 tháng chính hãng</li>
+                        <li><i class="bi bi-truck text-emerald me-1"></i> Giao hàng hỏa tốc 2 giờ</li>
+                        <li><i class="bi bi-arrow-repeat text-emerald me-1"></i> Đổi trả miễn phí 30 ngày</li>
+                        <li><i class="bi bi-headset text-emerald me-1"></i> Hỗ trợ kỹ thuật 24/7</li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h6 class="text-white font-heading fw-bold mb-3">Kết Nối</h6>
+                    <p class="text-muted small">Nhận thông báo ưu đãi và sản phẩm công nghệ mới nhất:</p>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" class="form-control input-custom" placeholder="Nhập email của bạn...">
+                        <button class="btn btn-accent px-3" type="button">Đăng ký</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pt-4 border-top border-secondary border-opacity-10 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 small text-muted">
+                <span>© 2026 NEXUS STORE - Đồ án Blazor Web App Demo UI</span>
+                <span class="badge badge-brand">Blazor InteractiveServer (.NET 10)</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Cart Add Toast Notification -->
+    @if (CartService.ShowNotification)
+    {
+        <div class="toast-notification">
+            <div class="rounded-circle bg-emerald bg-opacity-20 p-2 text-emerald d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-bag-check-fill fs-5"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-white small">Đã thêm vào giỏ hàng!</div>
+                <div class="text-muted small">@CartService.LastAddedProductName</div>
+            </div>
+            <button class="btn-close btn-close-white ms-auto small" @onclick="DismissNotification"></button>
+        </div>
+    }
+
+    <!-- UI Annotator / Visual Feedback Component -->
+    <UiAnnotator />
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        CartService.OnChange += StateHasChanged;
+    }
+
+    private void DismissNotification()
+    {
+        CartService.DismissNotification();
+    }
+
+    public void Dispose()
+    {
+        CartService.OnChange -= StateHasChanged;
+    }
+}

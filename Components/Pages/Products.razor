@@ -1,0 +1,139 @@
+@page "/products"
+@inject ProductService ProductService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Danh Sách Sản Phẩm - NEXUS STORE</PageTitle>
+
+<!-- Header Title -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="text-white font-heading fw-bold mb-1">Cửa Hàng Sản Phẩm</h2>
+        <p class="text-muted small mb-0">Khám phá các thiết bị công nghệ đỉnh cao được phân phối chính hãng</p>
+    </div>
+    
+    <!-- Search Bar & Sort -->
+    <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto">
+        <div class="position-relative flex-grow-1" style="min-width: 200px;">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <input type="text" 
+                   class="form-control input-custom ps-5" 
+                   placeholder="Tìm kiếm sản phẩm..." 
+                   @bind="SearchText" 
+                   @bind:event="oninput" />
+        </div>
+        
+        <select class="form-select input-custom w-auto" @bind="SortOrder">
+            <option value="default">Mặc định</option>
+            <option value="price-asc">Giá: Thấp -> Cao</option>
+            <option value="price-desc">Giá: Cao -> Thấp</option>
+            <option value="rating">Đánh giá cao nhất</option>
+        </select>
+    </div>
+</div>
+
+<!-- Category Filters Bar -->
+<div class="d-flex align-items-center gap-2 overflow-auto pb-2 mb-4 scrollbar-none">
+    @foreach (var cat in Categories)
+    {
+        <button class="filter-pill @(SelectedCategory == cat ? "active" : "")" 
+                @onclick="() => SelectCategory(cat)">
+            @cat
+        </button>
+    }
+</div>
+
+<!-- Product Count Bar -->
+<div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-secondary border-opacity-10 text-muted small">
+    <span>Hiển thị <strong class="text-white">@FilteredProducts.Count</strong> sản phẩm</span>
+    @if (!string.IsNullOrEmpty(SearchText) || SelectedCategory != "Tất cả")
+    {
+        <button class="btn btn-sm btn-link text-emerald text-decoration-none p-0" @onclick="ResetFilters">
+            <i class="bi bi-x-circle me-1"></i> Xóa bộ lọc
+        </button>
+    }
+</div>
+
+<!-- Product Grid -->
+@if (FilteredProducts.Count > 0)
+{
+    <div class="row g-4 mb-5">
+        @foreach (var product in FilteredProducts)
+        {
+            <div class="col-xl-3 col-lg-4 col-md-6">
+                <ProductCard Product="product" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    <!-- Empty State -->
+    <div class="text-center py-5 my-5 rounded-4 bg-surface border border-secondary border-opacity-10">
+        <div class="fs-1 mb-3 text-muted">🔍</div>
+        <h4 class="text-white font-heading fw-bold mb-2">Không tìm thấy sản phẩm nào</h4>
+        <p class="text-muted small mb-4">Rất tiếc, không có sản phẩm nào phù hợp với từ khóa hoặc bộ lọc của bạn.</p>
+        <button class="btn btn-accent" @onclick="ResetFilters">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Hiển thị tất cả sản phẩm
+        </button>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "cat")]
+    public string? CategoryQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchQuery { get; set; }
+
+    private string SelectedCategory = "Tất cả";
+    private string SearchText = "";
+    private string SortOrder = "default";
+    private List<string> Categories = new();
+
+    protected override void OnInitialized()
+    {
+        Categories = ProductService.GetCategories();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(CategoryQuery))
+        {
+            SelectedCategory = CategoryQuery;
+        }
+
+        if (!string.IsNullOrEmpty(SearchQuery))
+        {
+            SearchText = SearchQuery;
+        }
+    }
+
+    private void SelectCategory(string cat)
+    {
+        SelectedCategory = cat;
+    }
+
+    private void ResetFilters()
+    {
+        SelectedCategory = "Tất cả";
+        SearchText = "";
+        SortOrder = "default";
+        NavigationManager.NavigateTo("products");
+    }
+
+    private List<Product> FilteredProducts
+    {
+        get
+        {
+            var list = ProductService.SearchProducts(SearchText, SelectedCategory, null);
+
+            return SortOrder switch
+            {
+                "price-asc" => list.OrderBy(p => p.Price).ToList(),
+                "price-desc" => list.OrderByDescending(p => p.Price).ToList(),
+                "rating" => list.OrderByDescending(p => p.Rating).ToList(),
+                _ => list
+            };
+        }
+    }
+}

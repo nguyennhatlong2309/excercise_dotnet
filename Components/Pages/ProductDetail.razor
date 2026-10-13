@@ -1,0 +1,186 @@
+@page "/product/{Id:int}"
+@inject ProductService ProductService
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(Product?.Name ?? "Chi Tiết Sản Phẩm") - NEXUS STORE</PageTitle>
+
+@if (Product == null)
+{
+    <div class="text-center py-5 my-5">
+        <h3 class="text-white">Không tìm thấy sản phẩm!</h3>
+        <a href="products" class="btn btn-accent mt-3">Quay lại cửa hàng</a>
+    </div>
+}
+else
+{
+    <!-- Breadcrumb -->
+    <nav class="mb-4" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="" class="text-muted text-decoration-none">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a href="products" class="text-muted text-decoration-none">Sản phẩm</a></li>
+            <li class="breadcrumb-item"><a href="products?cat=@Uri.EscapeDataString(Product.Category)" class="text-muted text-decoration-none">@Product.Category</a></li>
+            <li class="breadcrumb-item active text-white fw-semibold" aria-current="page">@Product.Name</li>
+        </ol>
+    </nav>
+
+    <!-- Detail Main Container -->
+    <div class="row g-4 mb-5">
+        
+        <!-- Left Visual Visual Block Card -->
+        <div class="col-lg-5">
+            <div class="rounded-4 p-5 d-flex align-items-center justify-content-center position-relative shadow-2xl border border-secondary border-opacity-20" 
+                 style="background: @Product.Gradient; min-height: 380px;">
+                <span style="font-size: 7rem;">@Product.IconGlyph</span>
+                
+                @if (!string.IsNullOrEmpty(Product.Badge))
+                {
+                    <div class="product-badge" style="top: 20px; right: 20px; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                        @Product.Badge
+                    </div>
+                }
+
+                <div class="position-absolute bottom-0 start-0 m-3 px-3 py-1.5 rounded-pill bg-dark bg-opacity-75 backdrop-blur text-white small border border-secondary border-opacity-20">
+                    <i class="bi bi-check-circle-fill text-emerald me-1"></i> Còn hàng tại kho
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Product Information -->
+        <div class="col-lg-7">
+            <div class="ps-lg-3">
+                
+                <!-- Category & Brand -->
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-emerald bg-opacity-20 text-emerald font-heading fw-bold">@Product.Category</span>
+                    <span class="badge badge-brand">Thương hiệu: @Product.Brand</span>
+                </div>
+
+                <!-- Product Name -->
+                <h1 class="text-white font-heading fw-extrabold mb-3">@Product.Name</h1>
+
+                <!-- Rating & Reviews -->
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="text-warning fs-5">
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <span class="fw-bold text-white fs-5">@Product.Rating</span>
+                    <span class="text-muted">(@Product.ReviewCount đánh giá từ người dùng)</span>
+                </div>
+
+                <!-- Price Row -->
+                <div class="p-3 rounded-3 bg-surface border border-secondary border-opacity-10 mb-4 d-flex align-items-baseline gap-3">
+                    <span class="fs-2 font-heading fw-bold text-emerald">@Product.Price.ToString("N0") <small class="fs-5">đ</small></span>
+                    @if (Product.OriginalPrice > Product.Price)
+                    {
+                        <span class="fs-5 text-muted text-decoration-line-through">@Product.OriginalPrice.ToString("N0")đ</span>
+                        <span class="badge bg-rose-500 text-white bg-opacity-80" style="background: #f43f5e;">Tiết kiệm @Product.DiscountPercentage%</span>
+                    }
+                </div>
+
+                <!-- Description -->
+                <p class="text-muted mb-4 lead" style="font-size: 1rem;">
+                    @Product.Description
+                </p>
+
+                <!-- Technical Specs List -->
+                <div class="mb-4">
+                    <h6 class="text-white font-heading fw-bold mb-2">Thông Số Kỹ Thuật Nổi Bật:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var spec in Product.Specs)
+                        {
+                            <div class="px-3 py-1.5 rounded-3 bg-surface border border-secondary border-opacity-20 text-white small d-flex align-items-center gap-2">
+                                <i class="bi bi-cpu text-indigo-400"></i>
+                                <span>@spec</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Color Selection Swatches -->
+                @if (Product.Colors.Count > 0)
+                {
+                    <div class="mb-4">
+                        <h6 class="text-white font-heading fw-bold mb-2">Chọn Màu Sắc: <span class="text-emerald font-normal">@SelectedColor</span></h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var color in Product.Colors)
+                            {
+                                <button class="btn btn-sm @(SelectedColor == color ? "btn-accent" : "btn-outline-custom")" 
+                                        @onclick="() => SelectedColor = color">
+                                    @color
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Quantity & Add to Cart Controls -->
+                <div class="d-flex flex-wrap align-items-center gap-3 pt-3 border-top border-secondary border-opacity-10">
+                    <div class="d-flex align-items-center gap-2 rounded-3 p-1 bg-surface border border-secondary border-opacity-20">
+                        <button class="qty-btn" @onclick="DecrementQty"><i class="bi bi-dash"></i></button>
+                        <span class="px-3 fw-bold text-white fs-5">@Quantity</span>
+                        <button class="qty-btn" @onclick="IncrementQty"><i class="bi bi-plus"></i></button>
+                    </div>
+
+                    <button class="btn btn-emerald btn-lg px-4 flex-grow-1" @onclick="AddToCart">
+                        <i class="bi bi-bag-plus-fill me-2 fs-5"></i> Thêm Vào Giỏ Hàng
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Related Products Section -->
+    @if (RelatedProducts.Count > 0)
+    {
+        <section class="mt-5 pt-4 border-top border-secondary border-opacity-10">
+            <h4 class="text-white font-heading fw-bold mb-4">Sản Phẩm Cùng Danh Mục</h4>
+            <div class="row g-4">
+                @foreach (var related in RelatedProducts)
+                {
+                    <div class="col-lg-3 col-md-6">
+                        <ProductCard Product="related" />
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product? Product;
+    private List<Product> RelatedProducts = new();
+    private string SelectedColor = "Mặc định";
+    private int Quantity = 1;
+
+    protected override void OnParametersSet()
+    {
+        Product = ProductService.GetProductById(Id);
+
+        if (Product != null)
+        {
+            Quantity = 1;
+            SelectedColor = Product.Colors.FirstOrDefault() ?? "Mặc định";
+            RelatedProducts = ProductService.GetAllProducts()
+                .Where(p => p.Category == Product.Category && p.Id != Product.Id)
+                .Take(4)
+                .ToList();
+        }
+    }
+
+    private void IncrementQty() => Quantity++;
+    private void DecrementQty() { if (Quantity > 1) Quantity--; }
+
+    private void AddToCart()
+    {
+        if (Product != null)
+        {
+            CartService.AddToCart(Product, Quantity, SelectedColor);
+        }
+    }
+}

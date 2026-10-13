@@ -1,0 +1,84 @@
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+
+<div class="product-card">
+    
+    <!-- Visual Gradient Card Header (No image needed - anti-slop visual block) -->
+    <div class="product-visual-block" style="background: @Product.Gradient;">
+        <span>@Product.IconGlyph</span>
+        @if (!string.IsNullOrEmpty(Product.Badge))
+        {
+            <div class="product-badge">@Product.Badge</div>
+        }
+    </div>
+
+    <!-- Product Content Body -->
+    <div class="product-card-body">
+        
+        <!-- Category & Brand -->
+        <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="text-emerald fw-bold small uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">@Product.Category</span>
+            <span class="badge badge-brand" style="font-size: 0.72rem;">@Product.Brand</span>
+        </div>
+
+        <!-- Product Name -->
+        <h5 class="text-white font-heading fw-bold mb-2">
+            <a href="product/@Product.Id" class="text-white text-decoration-none hover-emerald">
+                @Product.Name
+            </a>
+        </h5>
+
+        <!-- Rating & Reviews -->
+        <div class="d-flex align-items-center gap-1 mb-3 small">
+            <div class="text-warning">
+                <i class="bi bi-star-fill"></i>
+            </div>
+            <span class="fw-bold text-white">@Product.Rating</span>
+            <span class="text-muted">(@Product.ReviewCount đánh giá)</span>
+        </div>
+
+        <!-- Spec pills sample -->
+        @if (Product.Specs.Count > 0)
+        {
+            <div class="d-flex flex-wrap gap-1 mb-3">
+                @foreach (var spec in Product.Specs.Take(2))
+                {
+                    <span class="badge badge-spec font-normal" style="font-size: 0.72rem;">
+                        @spec
+                    </span>
+                }
+            </div>
+        }
+
+        <!-- Price & Add To Cart Button Footer -->
+        <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex align-items-center justify-content-between">
+            <div>
+                <span class="price-tag">@Product.Price.ToString("N0") <small class="fs-6 fw-normal">đ</small></span>
+                @if (Product.OriginalPrice > Product.Price)
+                {
+                    <span class="price-original">@Product.OriginalPrice.ToString("N0")đ</span>
+                }
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+                <a href="product/@Product.Id" class="btn btn-sm btn-outline-custom p-2" title="Xem chi tiết">
+                    <i class="bi bi-eye"></i>
+                </a>
+                <button class="btn btn-sm btn-accent p-2 px-3" @onclick="AddToCart" title="Thêm vào giỏ">
+                    <i class="bi bi-bag-plus-fill me-1"></i> Mua
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Product Product { get; set; } = null!;
+
+    private void AddToCart()
+    {
+        CartService.AddToCart(Product, 1);
+    }
+}

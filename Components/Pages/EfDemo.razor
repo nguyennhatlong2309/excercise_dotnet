@@ -1,0 +1,588 @@
+@page "/demo-ef"
+@rendermode InteractiveServer
+@inject ConventionDbContext ConventionDb
+@inject AnnotationDbContext AnnotationDb
+@inject FluentApiDbContext FluentApiDb
+@using examBlazor.Data
+@using examBlazor.Data.ConventionModels
+@using examBlazor.Data.AnnotationModels
+@using examBlazor.Data.FluentApiModels
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Demo Kết Nối Database — 3 Cách (Convention, Data Annotation, Fluent API)</PageTitle>
+
+<div class="demo-container">
+    <header class="demo-header">
+        <div class="header-icon">🗄️</div>
+        <h1>Demo Kết Nối Database MySQL (Docker)</h1>
+        <p class="subtitle">So sánh 3 cách cấu hình Entity Framework Core theo kiến trúc chuẩn</p>
+    </header>
+
+    <!-- CARD 1: CONVENTION -->
+    <section class="approach-card convention">
+        <div class="card-header">
+            <span class="badge">Cách 1</span>
+            <h2>Convention (Quy ước ngầm định)</h2>
+            <p class="desc">EF Core tự suy ra từ tên class/property — không cần viết cấu hình gì thêm</p>
+        </div>
+        <div class="card-body">
+            <div class="rules">
+                <h4>📐 Quy ước tự động:</h4>
+                <ul>
+                    <li><code>Id</code> → <strong>PRIMARY KEY (AUTO_INCREMENT)</strong></li>
+                    <li>Tên class <code>ProductConvention</code> → table <strong>ProductConventions</strong></li>
+                    <li><code>CategoryConventionId</code> → tự nhận là <strong>FOREIGN KEY</strong></li>
+                    <li>Navigation property → tự động nhận diện quan hệ 1-N</li>
+                </ul>
+            </div>
+            <div class="db-status @(conventionStatus == "OK" ? "status-ok" : conventionStatus == "Lỗi" ? "status-error" : "status-checking")">
+                <span class="status-icon">@(conventionStatus == "OK" ? "✅" : conventionStatus == "Lỗi" ? "❌" : "⏳")</span>
+                <div>
+                    <strong>Database: ShopDB_Convention</strong>
+                    <p>@conventionMessage</p>
+                    @if (conventionStatus == "OK")
+                    {
+                        <small>📋 Tables: <code>CategoryConventions</code>, <code>ProductConventions</code></small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn-seed" @onclick="() => SeedConvention()" disabled="@(conventionStatus != "OK")">
+                ➕ Thêm dữ liệu mẫu
+            </button>
+            @if (conventionCount > 0)
+            {
+                <button class="btn-clear" @onclick="() => ClearConvention()">🗑️ Xoá dữ liệu</button>
+            }
+            <span class="count-badge">@conventionCount sản phẩm</span>
+        </div>
+
+        @if (conventionProducts?.Count > 0)
+        {
+            <div class="table-preview">
+                <h5>Dữ liệu trong bảng <code>ProductConventions</code>:</h5>
+                <table class="mini-table">
+                    <thead>
+                        <tr><th>ID</th><th>Tên sản phẩm</th><th>Giá bán</th><th>Danh mục</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in conventionProducts)
+                        {
+                            <tr>
+                                <td>@p.Id</td>
+                                <td><strong>@p.Name</strong></td>
+                                <td class="text-emerald fw-bold">@p.Price.ToString("N0") đ</td>
+                                <td>@(p.Category?.Name ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <!-- CARD 2: DATA ANNOTATION -->
+    <section class="approach-card annotation">
+        <div class="card-header">
+            <span class="badge">Cách 2</span>
+            <h2>Data Annotation (Thuộc tính chú thích)</h2>
+            <p class="desc">Dùng các <code>[Attribute]</code> ngay trên Model class từ namespace <code>DataAnnotations</code></p>
+        </div>
+        <div class="card-body">
+            <div class="rules">
+                <h4>🏷️ Attribute đã dùng:</h4>
+                <ul>
+                    <li><code>[Table("tbl_Products")]</code> → Đổi tên bảng tùy ý</li>
+                    <li><code>[Key]</code> <code>[Column("prod_id")]</code> → Đổi tên cột khóa chính</li>
+                    <li><code>[Required]</code> <code>[MaxLength(200)]</code> → Ràng buộc & Validation</li>
+                    <li><code>[ForeignKey("Category")]</code> <code>[Column("cat_id")]</code> → Khóa ngoại tùy chỉnh</li>
+                </ul>
+            </div>
+            <div class="db-status @(annotationStatus == "OK" ? "status-ok" : annotationStatus == "Lỗi" ? "status-error" : "status-checking")">
+                <span class="status-icon">@(annotationStatus == "OK" ? "✅" : annotationStatus == "Lỗi" ? "❌" : "⏳")</span>
+                <div>
+                    <strong>Database: ShopDB_Annotation</strong>
+                    <p>@annotationMessage</p>
+                    @if (annotationStatus == "OK")
+                    {
+                        <small>📋 Tables: <code>tbl_Categories</code>, <code>tbl_Products</code></small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn-seed" @onclick="() => SeedAnnotation()" disabled="@(annotationStatus != "OK")">
+                ➕ Thêm dữ liệu mẫu
+            </button>
+            @if (annotationCount > 0)
+            {
+                <button class="btn-clear" @onclick="() => ClearAnnotation()">🗑️ Xoá dữ liệu</button>
+            }
+            <span class="count-badge">@annotationCount sản phẩm</span>
+        </div>
+
+        @if (annotationProducts?.Count > 0)
+        {
+            <div class="table-preview">
+                <h5>Dữ liệu trong bảng <code>tbl_Products</code>:</h5>
+                <table class="mini-table">
+                    <thead>
+                        <tr><th>prod_id</th><th>prod_name</th><th>prod_price</th><th>cat_id (FK)</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in annotationProducts)
+                        {
+                            <tr>
+                                <td>@p.Id</td>
+                                <td><strong>@p.Name</strong></td>
+                                <td class="text-emerald fw-bold">@p.Price.ToString("N0") đ</td>
+                                <td>@(p.Category?.Name ?? $"ID: {p.CategoryId}")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <!-- CARD 3: FLUENT API -->
+    <section class="approach-card fluent">
+        <div class="card-header">
+            <span class="badge">Cách 3</span>
+            <h2>Fluent API (Cấu hình code tập trung)</h2>
+            <p class="desc">Model POCO thuần — Toàn bộ cấu hình nằm trong <code>OnModelCreating()</code> của DbContext</p>
+        </div>
+        <div class="card-body">
+            <div class="rules">
+                <h4>⚙️ Fluent methods đã dùng:</h4>
+                <ul>
+                    <li><code>.ToTable("fluent_Products")</code> → Tên bảng tùy ý</li>
+                    <li><code>.HasKey(p => p.Id)</code> <code>.HasColumnName("prod_id")</code> → Khóa chính & cột</li>
+                    <li><code>.IsRequired()</code> <code>.HasMaxLength(200)</code> → Ràng buộc kiểu dữ liệu</li>
+                    <li><code>.HasOne(...).WithMany(...).HasForeignKey(...)</code> → Quan hệ 1-N & Cascade Delete</li>
+                </ul>
+            </div>
+            <div class="db-status @(fluentStatus == "OK" ? "status-ok" : fluentStatus == "Lỗi" ? "status-error" : "status-checking")">
+                <span class="status-icon">@(fluentStatus == "OK" ? "✅" : fluentStatus == "Lỗi" ? "❌" : "⏳")</span>
+                <div>
+                    <strong>Database: ShopDB_FluentApi</strong>
+                    <p>@fluentMessage</p>
+                    @if (fluentStatus == "OK")
+                    {
+                        <small>📋 Tables: <code>fluent_Categories</code>, <code>fluent_Products</code></small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn-seed" @onclick="() => SeedFluent()" disabled="@(fluentStatus != "OK")">
+                ➕ Thêm dữ liệu mẫu
+            </button>
+            @if (fluentCount > 0)
+            {
+                <button class="btn-clear" @onclick="() => ClearFluent()">🗑️ Xoá dữ liệu</button>
+            }
+            <span class="count-badge">@fluentCount sản phẩm</span>
+        </div>
+
+        @if (fluentProducts?.Count > 0)
+        {
+            <div class="table-preview">
+                <h5>Dữ liệu trong bảng <code>fluent_Products</code>:</h5>
+                <table class="mini-table">
+                    <thead>
+                        <tr><th>prod_id</th><th>prod_name</th><th>prod_price</th><th>cat_id</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in fluentProducts)
+                        {
+                            <tr>
+                                <td>@p.Id</td>
+                                <td><strong>@p.Name</strong></td>
+                                <td class="text-emerald fw-bold">@p.Price.ToString("N0") đ</td>
+                                <td>@(p.Category?.Name ?? $"ID: {p.CategoryId}")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <!-- SO SÁNH TỔNG KẾT -->
+    <div class="comparison-section">
+        <h3>📋 Bảng Tổng Kết So Sánh 3 Cách Mapping</h3>
+        <table class="compare-table">
+            <thead>
+                <tr>
+                    <th>Tiêu chí</th>
+                    <th class="convention-col">⚡ Convention</th>
+                    <th class="annotation-col">🏷️ Data Annotation</th>
+                    <th class="fluent-col">🔧 Fluent API</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Nơi viết code</td><td>Không cần viết (tự động)</td><td>Attribute trên Model</td><td>Trong <code>OnModelCreating()</code></td></tr>
+                <tr><td>Độ phức tạp code</td><td>Ít nhất</td><td>Trung bình</td><td>Nhiều nhất</td></tr>
+                <tr><td>Khả năng tùy biến</td><td>Thấp nhất</td><td>Khá (cơ bản)</td><td>Cao nhất (mọi kịch bản)</td></tr>
+                <tr><td>Form Validation</td><td>❌ Không</td><td>✅ Tích hợp sẵn</td><td>❌ Phải viết riêng</td></tr>
+                <tr><td>Tính độc lập của Model</td><td>Cao (POCO)</td><td>Thấp (phụ thuộc thư viện)</td><td>Rất cao (POCO hoàn toàn)</td></tr>
+                <tr><td>Database minh họa</td><td><code>ShopDB_Convention</code></td><td><code>ShopDB_Annotation</code></td><td><code>ShopDB_FluentApi</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .demo-container {
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    .demo-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .header-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    .demo-header h1 { font-size: 2.2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; }
+    .demo-header .subtitle { color: #64748b; font-size: 1.05rem; }
+
+    .approach-card {
+        background: white;
+        border-radius: 16px;
+        border: 2px solid transparent;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .approach-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+    .approach-card.convention { border-color: #3b82f6; }
+    .approach-card.annotation { border-color: #8b5cf6; }
+    .approach-card.fluent { border-color: #10b981; }
+
+    .card-header {
+        padding: 1.5rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .convention .card-header { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+    .annotation .card-header { background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
+    .fluent .card-header { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+
+    .badge {
+        background: white;
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    .card-header h2 { margin: 0; font-size: 1.4rem; font-weight: 700; }
+    .convention .card-header h2 { color: #1d4ed8; }
+    .annotation .card-header h2 { color: #6d28d9; }
+    .fluent .card-header h2 { color: #059669; }
+
+    .card-header .desc { color: #475569; margin: 0; font-size: 0.9rem; flex-basis: 100%; }
+
+    .card-body { padding: 1.5rem 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+    .rules h4 { margin: 0 0 0.75rem; color: #374151; font-size: 0.95rem; font-weight: 700; }
+    .rules ul { margin: 0; padding-left: 1.25rem; }
+    .rules li { margin-bottom: 0.4rem; color: #4b5563; font-size: 0.88rem; }
+    .rules code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.82rem; color: #6366f1; font-weight: 600; }
+
+    .db-status {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    .status-ok { background: #f0fdf4; border: 1px solid #86efac; }
+    .status-error { background: #fef2f2; border: 1px solid #fca5a5; }
+    .status-checking { background: #fefce8; border: 1px solid #fde047; }
+    .status-icon { font-size: 1.5rem; line-height: 1; }
+    .db-status strong { color: #1e293b; display: block; margin-bottom: 0.25rem; }
+    .db-status p { margin: 0; color: #64748b; font-size: 0.85rem; }
+    .db-status small { color: #64748b; font-size: 0.8rem; }
+
+    .card-footer {
+        padding: 1rem 2rem;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-seed {
+        background: #1e293b;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1.25rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-seed:hover:not(:disabled) { background: #334155; }
+    .btn-seed:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-clear {
+        background: #fee2e2;
+        color: #991b1b;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-clear:hover { background: #fecaca; }
+
+    .count-badge {
+        background: #e2e8f0;
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        color: #334155;
+        font-weight: 700;
+        margin-left: auto;
+    }
+
+    .table-preview {
+        padding: 1rem 2rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+        background: #fafafa;
+    }
+    .table-preview h5 { font-size: 0.88rem; color: #475569; margin-bottom: 0.75rem; font-weight: 700; }
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .mini-table th { padding: 0.5rem 0.75rem; background: #f1f5f9; color: #475569; text-align: left; font-size: 0.78rem; text-transform: uppercase; font-weight: 700; }
+    .mini-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    .mini-table tr:last-child td { border-bottom: none; }
+
+    .comparison-section { margin-top: 3rem; }
+    .comparison-section h3 { font-size: 1.2rem; color: #1e293b; margin-bottom: 1rem; font-weight: 700; }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .compare-table th { padding: 0.75rem 1rem; color: white; text-align: center; font-weight: 600; }
+    .compare-table th:first-child { text-align: left; background: #1e293b; }
+    .convention-col { background: #2563eb !important; }
+    .annotation-col { background: #7c3aed !important; }
+    .fluent-col     { background: #059669 !important; }
+    .compare-table td { padding: 0.7rem 1rem; border-bottom: 1px solid #f1f5f9; color: #374151; }
+    .compare-table td:first-child { font-weight: 600; color: #1e293b; }
+    .compare-table td:not(:first-child) { text-align: center; }
+    .compare-table tr:hover td { background: #f8fafc; }
+
+    @@media (max-width: 700px) {
+        .card-body { grid-template-columns: 1fr; }
+        .card-header { gap: 0.5rem; }
+    }
+</style>
+
+@code {
+    string conventionStatus = "Đang kiểm tra...";
+    string conventionMessage = "";
+    int conventionCount = 0;
+    List<ProductConvention>? conventionProducts;
+
+    string annotationStatus = "Đang kiểm tra...";
+    string annotationMessage = "";
+    int annotationCount = 0;
+    List<ProductAnnotation>? annotationProducts;
+
+    string fluentStatus = "Đang kiểm tra...";
+    string fluentMessage = "";
+    int fluentCount = 0;
+    List<ProductFluent>? fluentProducts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAllConnections();
+    }
+
+    async Task CheckAllConnections()
+    {
+        // 1. Kiểm tra Convention DB
+        try
+        {
+            bool canConnect = await ConventionDb.Database.CanConnectAsync();
+            conventionStatus = canConnect ? "OK" : "Lỗi";
+            conventionMessage = canConnect
+                ? "Kết nối thành công! Database sẵn sàng."
+                : "Không thể kết nối tới database.";
+            if (canConnect)
+            {
+                conventionCount = await ConventionDb.ProductConventions.CountAsync();
+                conventionProducts = await ConventionDb.ProductConventions.Include(p => p.Category).Take(5).ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            conventionStatus = "Lỗi";
+            conventionMessage = ex.Message.Length > 100 ? ex.Message[..100] + "..." : ex.Message;
+        }
+
+        // 2. Kiểm tra Annotation DB
+        try
+        {
+            bool canConnect = await AnnotationDb.Database.CanConnectAsync();
+            annotationStatus = canConnect ? "OK" : "Lỗi";
+            annotationMessage = canConnect
+                ? "Kết nối thành công! Database sẵn sàng."
+                : "Không thể kết nối tới database.";
+            if (canConnect)
+            {
+                annotationCount = await AnnotationDb.ProductAnnotations.CountAsync();
+                annotationProducts = await AnnotationDb.ProductAnnotations.Include(p => p.Category).Take(5).ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            annotationStatus = "Lỗi";
+            annotationMessage = ex.Message.Length > 100 ? ex.Message[..100] + "..." : ex.Message;
+        }
+
+        // 3. Kiểm tra FluentApi DB
+        try
+        {
+            bool canConnect = await FluentApiDb.Database.CanConnectAsync();
+            fluentStatus = canConnect ? "OK" : "Lỗi";
+            fluentMessage = canConnect
+                ? "Kết nối thành công! Database sẵn sàng."
+                : "Không thể kết nối tới database.";
+            if (canConnect)
+            {
+                fluentCount = await FluentApiDb.ProductFluents.CountAsync();
+                fluentProducts = await FluentApiDb.ProductFluents.Include(p => p.Category).Take(5).ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            fluentStatus = "Lỗi";
+            fluentMessage = ex.Message.Length > 100 ? ex.Message[..100] + "..." : ex.Message;
+        }
+    }
+
+    async Task SeedConvention()
+    {
+        var cat = new CategoryConvention { Name = "Điện thoại & Tablet" };
+        ConventionDb.CategoryConventions.Add(cat);
+        await ConventionDb.SaveChangesAsync();
+
+        ConventionDb.ProductConventions.Add(new ProductConvention
+        {
+            Name = "Aura Phone 15 Pro",
+            Description = "Flagship Titanium cao cấp",
+            Price = 28990000,
+            ImageUrl = "📱",
+            CategoryConventionId = cat.Id
+        });
+        ConventionDb.ProductConventions.Add(new ProductConvention
+        {
+            Name = "NexusBook Pro M3",
+            Description = "Laptop hiệu năng đồ họa đỉnh cao",
+            Price = 45990000,
+            ImageUrl = "💻",
+            CategoryConventionId = cat.Id
+        });
+        await ConventionDb.SaveChangesAsync();
+
+        conventionCount = await ConventionDb.ProductConventions.CountAsync();
+        conventionProducts = await ConventionDb.ProductConventions.Include(p => p.Category).Take(5).ToListAsync();
+    }
+
+    async Task ClearConvention()
+    {
+        ConventionDb.ProductConventions.RemoveRange(ConventionDb.ProductConventions);
+        ConventionDb.CategoryConventions.RemoveRange(ConventionDb.CategoryConventions);
+        await ConventionDb.SaveChangesAsync();
+        conventionCount = 0;
+        conventionProducts = new();
+    }
+
+    async Task SeedAnnotation()
+    {
+        var cat = new CategoryAnnotation { Name = "Thiết bị âm thanh" };
+        AnnotationDb.CategoryAnnotations.Add(cat);
+        await AnnotationDb.SaveChangesAsync();
+
+        AnnotationDb.ProductAnnotations.Add(new ProductAnnotation
+        {
+            Name = "SonicPods Ultra Wireless",
+            Description = "Tai nghe chống ồn chủ động ANC",
+            Price = 4990000,
+            ImageUrl = "🎧",
+            CategoryId = cat.Id
+        });
+        AnnotationDb.ProductAnnotations.Add(new ProductAnnotation
+        {
+            Name = "Aura Studio Monitor",
+            Description = "Loa kiểm âm phòng thu 120W",
+            Price = 8990000,
+            ImageUrl = "🔊",
+            CategoryId = cat.Id
+        });
+        await AnnotationDb.SaveChangesAsync();
+
+        annotationCount = await AnnotationDb.ProductAnnotations.CountAsync();
+        annotationProducts = await AnnotationDb.ProductAnnotations.Include(p => p.Category).Take(5).ToListAsync();
+    }
+
+    async Task ClearAnnotation()
+    {
+        AnnotationDb.ProductAnnotations.RemoveRange(AnnotationDb.ProductAnnotations);
+        AnnotationDb.CategoryAnnotations.RemoveRange(AnnotationDb.CategoryAnnotations);
+        await AnnotationDb.SaveChangesAsync();
+        annotationCount = 0;
+        annotationProducts = new();
+    }
+
+    async Task SeedFluent()
+    {
+        var cat = new CategoryFluent { Name = "Phụ kiện Gaming" };
+        FluentApiDb.CategoryFluents.Add(cat);
+        await FluentApiDb.SaveChangesAsync();
+
+        FluentApiDb.ProductFluents.Add(new ProductFluent
+        {
+            Name = "Mechanical Keyboard Cyber 87",
+            Description = "Bàn phím cơ Hotswap RGB",
+            Price = 2850000,
+            ImageUrl = "⌨️",
+            CategoryId = cat.Id
+        });
+        FluentApiDb.ProductFluents.Add(new ProductFluent
+        {
+            Name = "Precision Mouse Pro 4K",
+            Description = "Chuột gaming siêu nhẹ 49g 26K DPI",
+            Price = 1690000,
+            ImageUrl = "🖱️",
+            CategoryId = cat.Id
+        });
+        await FluentApiDb.SaveChangesAsync();
+
+        fluentCount = await FluentApiDb.ProductFluents.CountAsync();
+        fluentProducts = await FluentApiDb.ProductFluents.Include(p => p.Category).Take(5).ToListAsync();
+    }
+
+    async Task ClearFluent()
+    {
+        FluentApiDb.ProductFluents.RemoveRange(FluentApiDb.ProductFluents);
+        FluentApiDb.CategoryFluents.RemoveRange(FluentApiDb.CategoryFluents);
+        await FluentApiDb.SaveChangesAsync();
+        fluentCount = 0;
+        fluentProducts = new();
+    }
+}

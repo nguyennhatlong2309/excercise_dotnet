@@ -1,0 +1,739 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<!-- ==============================================================
+     UI ANNOTATOR / VISUAL FEEDBACK COMPONENT
+     Nhẹ, Native Blazor, 0 Thư Viện Ngoài
+     ============================================================== -->
+<div class="ui-annotator-container">
+
+    <!-- FLOATING TOGGLE BUTTON (Góc dưới bên trái) -->
+    <div class="annotator-fab">
+        <button class="fab-btn @(isActive ? "active" : "")" 
+                @onclick="ToggleActive" 
+                title="@(isActive ? "Đang bật chế độ Góp ý (Click để tắt)" : "Bật chế độ Góp ý giao diện (Visual Feedback)")">
+            <span class="fab-icon">@(isActive ? "🎯" : "💬")</span>
+            <span class="fab-label d-none d-sm-inline">
+                @(isActive ? "Đang góp ý..." : "Góp ý UI")
+            </span>
+            @if (annotations.Count > 0)
+            {
+                <span class="fab-count">@annotations.Count</span>
+            }
+        </button>
+
+        @if (annotations.Count > 0)
+        {
+            <button class="fab-btn-list" @onclick="ToggleListModal" title="Xem danh sách tất cả góp ý">
+                📋
+            </button>
+        }
+    </div>
+
+    <!-- BANNER HƯỚNG DẪN KHI BẬT CHẾ ĐỘ INSPECT -->
+    @if (isActive)
+    {
+        <div class="inspect-banner">
+            <div class="banner-content">
+                <span class="pulse-dot"></span>
+                <span><strong>Chế độ Góp ý đang BẬT:</strong> Di chuột và Click vào bất kỳ phần tử nào trên trang để ghi chú.</span>
+            </div>
+            <button class="btn-banner-close" @onclick="ToggleActive">✕ Tắt</button>
+        </div>
+    }
+
+    <!-- POPUP NHẬP NỘI DUNG GÓP Ý KHI CLICK VÀO ELEMENT -->
+    @if (selectedElement != null)
+    {
+        <div class="annotator-modal-backdrop" @onclick="CancelAdd">
+            <div class="annotator-modal" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <span class="modal-title">📌 Thêm góp ý phần tử</span>
+                    <button class="modal-close" @onclick="CancelAdd">✕</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="target-info">
+                        <span class="target-tag">Selector:</span>
+                        <code>@selectedElement.Selector</code>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(selectedElement.TextPreview))
+                    {
+                        <div class="target-preview">
+                            <span class="text-muted small">Nội dung mẫu:</span>
+                            <em>"@selectedElement.TextPreview"</em>
+                        </div>
+                    }
+
+                    <label class="form-label mt-2">Nội dung phản hồi / yêu cầu sửa:</label>
+                    <textarea class="form-control annotator-textarea" 
+                              rows="3" 
+                              placeholder="Ví dụ: Đổi màu nút này thành xanh lục, tăng khoảng cách padding..." 
+                              @bind="newComment"
+                              @bind:event="oninput"
+                              autofocus></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-cancel-annot" @onclick="CancelAdd">Huỷ</button>
+                    <button class="btn-save-annot" @onclick="SaveAnnotation" disabled="@string.IsNullOrWhiteSpace(newComment)">
+                        💾 Ghim phản hồi
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- RENDER CÁC GHIM (PINS) TRÊN TRANG WEB -->
+    @foreach (var pin in annotations)
+    {
+        <div class="annotator-pin @(activePin?.Id == pin.Id ? "pin-active" : "") @(pin.IsResolved ? "pin-resolved" : "")"
+             style="top: @(pin.PageY)px; left: @(pin.PageX)px;"
+             @onclick="() => SelectPin(pin)"
+             title="@pin.Comment">
+            <span>@(pin.Index)</span>
+        </div>
+    }
+
+    <!-- POPOVER XEM CHI TIẾT KHI CLICK VÀO 1 GHIM -->
+    @if (activePin != null)
+    {
+        <div class="pin-popover" style="top: @(activePin.PageY + 30)px; left: @(Math.Min(activePin.PageX, 800))px;">
+            <div class="popover-header">
+                <span class="badge bg-primary text-white">Ghim #@activePin.Index</span>
+                <span class="small text-muted">@activePin.CreatedAt.ToString("HH:mm dd/MM")</span>
+                <button class="popover-close" @onclick="() => activePin = null">✕</button>
+            </div>
+            <div class="popover-body">
+                <p class="popover-comment">@activePin.Comment</p>
+                <div class="popover-selector">
+                    <small class="text-muted">Phần tử:</small>
+                    <code>@activePin.Selector</code>
+                </div>
+            </div>
+            <div class="popover-actions">
+                <button class="btn-pin-action @(activePin.IsResolved ? "btn-undo" : "btn-resolve")" 
+                        @onclick="() => ToggleResolve(activePin)">
+                    @(activePin.IsResolved ? "↩️ Đánh dấu chưa xong" : "✅ Đã giải quyết")
+                </button>
+                <button class="btn-pin-delete" @onclick="() => DeletePin(activePin)">
+                    🗑️ Xoá
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- MODAL XEM TOÀN BỘ DANH SÁCH GÓP Ý -->
+    @if (showListModal)
+    {
+        <div class="annotator-modal-backdrop" @onclick="ToggleListModal">
+            <div class="annotator-modal list-modal" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <span class="modal-title">📋 Danh sách góp ý UI (@annotations.Count)</span>
+                    <button class="modal-close" @onclick="ToggleListModal">✕</button>
+                </div>
+                
+                <div class="modal-body list-body">
+                    @if (annotations.Count == 0)
+                    {
+                        <div class="text-center py-4 text-muted">Chưa có phản hồi nào được ghi lại.</div>
+                    }
+                    else
+                    {
+                        <div class="annotations-list">
+                            @foreach (var item in annotations)
+                            {
+                                <div class="annotation-row @(item.IsResolved ? "resolved" : "")">
+                                    <div class="row-header">
+                                        <span class="row-badge">#@item.Index</span>
+                                        <code>@item.Selector</code>
+                                        <span class="row-time">@item.CreatedAt.ToString("HH:mm")</span>
+                                    </div>
+                                    <div class="row-comment">@item.Comment</div>
+                                    <div class="row-actions">
+                                        <button class="btn-xs @(item.IsResolved ? "btn-undo" : "btn-resolve")" 
+                                                @onclick="() => ToggleResolve(item)">
+                                            @(item.IsResolved ? "Đã xong" : "Chưa xong")
+                                        </button>
+                                        <button class="btn-xs btn-pin-delete" @onclick="() => DeletePin(item)">
+                                            Xoá
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer space-between">
+                    <button class="btn-copy-md" @onclick="CopyAsMarkdown">
+                        📋 @(copyStatus ? "Đã sao chép!" : "Copy dạng Markdown (cho AI)")
+                    </button>
+                    <button class="btn-cancel-annot" @onclick="ToggleListModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    private bool isActive = false;
+    private bool showListModal = false;
+    private bool copyStatus = false;
+    private DotNetObjectReference<UiAnnotator>? dotNetRef;
+    private ElementClickInfo? selectedElement;
+    private string newComment = "";
+    private AnnotationItem? activePin;
+    private List<AnnotationItem> annotations = new();
+
+    public class ElementClickInfo
+    {
+        public string Selector { get; set; } = "";
+        public string TextPreview { get; set; } = "";
+        public double PageX { get; set; }
+        public double PageY { get; set; }
+    }
+
+    public class AnnotationItem
+    {
+        public int Id { get; set; }
+        public int Index { get; set; }
+        public string Selector { get; set; } = "";
+        public string TextPreview { get; set; } = "";
+        public string Comment { get; set; } = "";
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public double PageX { get; set; }
+        public double PageY { get; set; }
+        public bool IsResolved { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initUiAnnotator", dotNetRef);
+            await LoadFromStorage();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleActive()
+    {
+        isActive = !isActive;
+        selectedElement = null;
+        activePin = null;
+        await JS.InvokeVoidAsync("toggleUiAnnotator", isActive);
+    }
+
+    private void ToggleListModal()
+    {
+        showListModal = !showListModal;
+        copyStatus = false;
+    }
+
+    [JSInvokable]
+    public void OnElementSelected(ElementClickInfo info)
+    {
+        selectedElement = info;
+        newComment = "";
+        StateHasChanged();
+    }
+
+    private void CancelAdd()
+    {
+        selectedElement = null;
+        newComment = "";
+    }
+
+    private async Task SaveAnnotation()
+    {
+        if (selectedElement == null || string.IsNullOrWhiteSpace(newComment)) return;
+
+        var nextId = annotations.Count > 0 ? annotations.Max(a => a.Id) + 1 : 1;
+        var item = new AnnotationItem
+        {
+            Id = nextId,
+            Index = annotations.Count + 1,
+            Selector = selectedElement.Selector,
+            TextPreview = selectedElement.TextPreview,
+            Comment = newComment.Trim(),
+            CreatedAt = DateTime.Now,
+            PageX = selectedElement.PageX,
+            PageY = selectedElement.PageY,
+            IsResolved = false
+        };
+
+        annotations.Add(item);
+        selectedElement = null;
+        newComment = "";
+
+        await SaveToStorage();
+    }
+
+    private void SelectPin(AnnotationItem pin)
+    {
+        activePin = activePin?.Id == pin.Id ? null : pin;
+    }
+
+    private async Task ToggleResolve(AnnotationItem pin)
+    {
+        pin.IsResolved = !pin.IsResolved;
+        await SaveToStorage();
+    }
+
+    private async Task DeletePin(AnnotationItem pin)
+    {
+        annotations.Remove(pin);
+        if (activePin?.Id == pin.Id) activePin = null;
+
+        // Re-index pins
+        for (int i = 0; i < annotations.Count; i++)
+        {
+            annotations[i].Index = i + 1;
+        }
+
+        await SaveToStorage();
+    }
+
+    private async Task SaveToStorage()
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(annotations);
+            await JS.InvokeVoidAsync("localStorage.setItem", "nexus_ui_annotations", json);
+        }
+        catch { }
+    }
+
+    private async Task LoadFromStorage()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "nexus_ui_annotations");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var loaded = System.Text.Json.JsonSerializer.Deserialize<List<AnnotationItem>>(json);
+                if (loaded != null) annotations = loaded;
+            }
+        }
+        catch { }
+    }
+
+    private async Task CopyAsMarkdown()
+    {
+        if (annotations.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("### 📝 Danh sách Feedback Giao diện (Blazor UI Annotations):");
+        foreach (var item in annotations)
+        {
+            var status = item.IsResolved ? "✅ [ĐÃ XỬ LÝ]" : "⏳ [CẦN SỬA]";
+            sb.AppendLine($"- **#{item.Index}** {status} Phần tử: `{item.Selector}`");
+            sb.AppendLine($"  - Ghi chú: {item.Comment}");
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
+        copyStatus = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+}
+
+<style>
+    /* ==============================================================
+       STYLES FOR UI ANNOTATOR
+       ============================================================== */
+    .ui-annotator-container {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* FAB BUTTON */
+    .annotator-fab {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .fab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #1e1b4b;
+        color: #ffffff;
+        border: 2px solid #6366f1;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+        transition: all 0.25s ease;
+    }
+
+    .fab-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px -5px rgba(99, 102, 241, 0.6);
+        background: #312e81;
+    }
+
+    .fab-btn.active {
+        background: #dc2626;
+        border-color: #ef4444;
+        box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.5);
+        animation: fabPulse 2s infinite;
+    }
+
+    @@keyframes fabPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+        50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    }
+
+    .fab-count {
+        background: #10b981;
+        color: white;
+        border-radius: 999px;
+        padding: 2px 7px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .fab-btn-list {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        font-size: 1.1rem;
+        transition: transform 0.2s;
+    }
+
+    .fab-btn-list:hover {
+        transform: scale(1.1);
+    }
+
+    /* BANNER */
+    .inspect-banner {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99998;
+        background: rgba(15, 23, 42, 0.92);
+        color: white;
+        backdrop-filter: blur(8px);
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(99, 102, 241, 0.5);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        font-size: 0.88rem;
+    }
+
+    .banner-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ef4444;
+        animation: dotBlink 1s infinite;
+    }
+
+    @@keyframes dotBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.2; }
+    }
+
+    .btn-banner-close {
+        background: rgba(255, 255, 255, 0.15);
+        border: none;
+        color: white;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        cursor: pointer;
+    }
+
+    .btn-banner-close:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* PINS */
+    .annotator-pin {
+        position: absolute;
+        z-index: 99997;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 800;
+        box-shadow: 0 4px 10px rgba(220, 38, 38, 0.5);
+        cursor: pointer;
+        border: 2px solid #ffffff;
+        transform: translate(-50%, -50%);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .annotator-pin:hover {
+        transform: translate(-50%, -50%) scale(1.25);
+        z-index: 99999;
+    }
+
+    .annotator-pin.pin-resolved {
+        background: linear-gradient(135deg, #10b981, #059669);
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.5);
+    }
+
+    .annotator-pin.pin-active {
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6);
+        transform: translate(-50%, -50%) scale(1.3);
+    }
+
+    /* POPOVER */
+    .pin-popover {
+        position: absolute;
+        z-index: 99999;
+        background: #ffffff;
+        color: #0f172a;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        width: 280px;
+        box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.2);
+    }
+
+    .popover-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .popover-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #94a3b8;
+    }
+
+    .popover-comment {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .popover-selector code {
+        display: block;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        word-break: break-all;
+        color: #6366f1;
+    }
+
+    .popover-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .btn-pin-action {
+        flex: 1;
+        border: none;
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-resolve { background: #dcfce7; color: #166534; }
+    .btn-undo { background: #fef3c7; color: #92400e; }
+
+    .btn-pin-delete {
+        background: #fee2e2;
+        color: #991b1b;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+    /* MODAL BACKDROP & DIALOG */
+    .annotator-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 100000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .annotator-modal {
+        background: #ffffff;
+        color: #0f172a;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        animation: modalScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .annotator-modal.list-modal {
+        max-width: 560px;
+    }
+
+    @@keyframes modalScale {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .modal-title { font-weight: 700; font-size: 1rem; }
+    .modal-close { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #64748b; }
+
+    .modal-body { padding: 18px; }
+
+    .target-info {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.82rem;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        word-break: break-all;
+    }
+
+    .target-info code { color: #6366f1; font-weight: 600; }
+    .target-preview { font-size: 0.8rem; margin: 6px 0 12px; color: #64748b; }
+
+    .annotator-textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        padding: 10px;
+        font-size: 0.9rem;
+        outline: none;
+        box-sizing: border-box;
+    }
+
+    .annotator-textarea:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .modal-footer {
+        padding: 12px 18px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .modal-footer.space-between {
+        justify-content: space-between;
+    }
+
+    .btn-cancel-annot {
+        background: #e2e8f0;
+        color: #334155;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .btn-save-annot {
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .btn-save-annot:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-copy-md {
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    /* LIST MODAL */
+    .list-body { max-height: 400px; overflow-y: auto; }
+    .annotation-row {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    .annotation-row.resolved {
+        opacity: 0.6;
+        background: #f1f5f9;
+    }
+    .row-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.8rem; }
+    .row-badge { background: #6366f1; color: white; border-radius: 4px; padding: 1px 6px; font-weight: 700; }
+    .row-time { margin-left: auto; color: #94a3b8; }
+    .row-comment { font-size: 0.88rem; font-weight: 500; margin-bottom: 6px; }
+    .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .btn-xs { border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; }
+</style>

@@ -1,0 +1,132 @@
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@implements IDisposable
+
+<header class="app-header py-3 px-4 mb-4">
+    <div class="container-xl">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+            
+            <!-- Logo Brand -->
+            <a href="" class="d-flex align-items-center gap-2 text-decoration-none">
+                <div class="d-flex align-items-center justify-content-center rounded-3 text-white fw-bold shadow-sm brand-logo-icon" 
+                     style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1 0%, #10b981 100%);">
+                    <i class="bi bi-cpu-fill fs-5 text-white"></i>
+                </div>
+                <div>
+                    <span class="fs-4 font-heading fw-bold brand-title tracking-tight">NEXUS</span>
+                    <span class="badge ms-1 bg-indigo-500 text-indigo-200" style="background: rgba(99,102,241,0.2); color: #818cf8; border: 1px solid rgba(99,102,241,0.3);">STORE</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="d-none d-md-flex align-items-center gap-2">
+                <NavLink class="nav-link-custom" href="" Match="NavLinkMatch.All">
+                    <i class="bi bi-house-door me-1"></i> Trang chủ
+                </NavLink>
+                <NavLink class="nav-link-custom" href="products">
+                    <i class="bi bi-grid-3x3-gap me-1"></i> Sản phẩm
+                </NavLink>
+                <NavLink class="nav-link-custom d-flex align-items-center gap-2" href="cart">
+                    <i class="bi bi-bag-check me-1"></i> Giỏ hàng
+                    @if (CartCount > 0)
+                    {
+                        <span class="cart-badge">@CartCount</span>
+                    }
+                </NavLink>
+                <NavLink class="nav-link-custom" href="demo-ef">
+                    <i class="bi bi-database me-1"></i> Demo EF
+                </NavLink>
+            </nav>
+
+            <!-- Right Actions: Search, Theme Toggle & Cart Button -->
+            <div class="d-flex align-items-center gap-2 gap-sm-3">
+                
+                <!-- Quick Search Input -->
+                <div class="position-relative d-none d-lg-block" style="width: 220px;">
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" 
+                           class="form-control input-custom ps-5" 
+                           placeholder="Tìm sản phẩm..." 
+                           @bind="searchQuery" 
+                           @bind:event="oninput" 
+                           @onkeyup="HandleKeyUp" />
+                </div>
+
+                <!-- Theme Toggle Button (Light / Dark) -->
+                <button class="btn-theme-toggle" 
+                        @onclick="ToggleTheme" 
+                        title="@(isDarkMode ? "Chuyển sang chế độ Sáng" : "Chuyển sang chế độ Tối")"
+                        aria-label="Toggle theme">
+                    @if (isDarkMode)
+                    {
+                        <i class="bi bi-sun-fill text-warning fs-5"></i>
+                    }
+                    else
+                    {
+                        <i class="bi bi-moon-stars-fill text-primary fs-5"></i>
+                    }
+                </button>
+
+                <!-- Cart Button -->
+                <a href="cart" class="btn btn-outline-custom d-flex align-items-center gap-2 position-relative">
+                    <i class="bi bi-cart3 fs-5 text-emerald"></i>
+                    <span class="d-none d-sm-inline fw-semibold">Giỏ hàng</span>
+                    @if (CartCount > 0)
+                    {
+                        <span class="cart-badge">@CartCount</span>
+                    }
+                </a>
+
+            </div>
+        </div>
+    </div>
+</header>
+
+@code {
+    private int CartCount => CartService.GetTotalCount();
+    private string searchQuery = "";
+    private bool isDarkMode = false;
+
+    protected override void OnInitialized()
+    {
+        CartService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<string>("getAppTheme");
+                isDarkMode = (theme == "dark");
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        try
+        {
+            await JS.InvokeVoidAsync("setAppTheme", isDarkMode ? "dark" : "light");
+        }
+        catch { }
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            NavigationManager.NavigateTo($"products?q={Uri.EscapeDataString(searchQuery)}");
+        }
+    }
+
+    public void Dispose()
+    {
+        CartService.OnChange -= StateHasChanged;
+    }
+}
