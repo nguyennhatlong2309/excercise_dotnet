@@ -1,0 +1,93 @@
+@model ProductViewModel
+@{
+    ViewData["Title"] = "Chỉnh Sửa Sản Phẩm";
+}
+
+<div class="row justify-content-center my-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold mb-1">✏️ Chỉnh Sửa Sản Phẩm #@Model.Id</h3>
+                    <p class="text-muted small mb-0">Cập nhật thông tin và kiểm tra validation</p>
+                </div>
+                <a asp-action="Products" class="btn btn-outline-secondary btn-sm">Quay lại</a>
+            </div>
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+            <form asp-action="EditProduct" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label asp-for="Name" class="form-label fw-semibold"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="CategoryId" class="form-label fw-semibold"></label>
+                        <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.CategoryList"></select>
+                        <span asp-validation-for="CategoryId" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Brand" class="form-label fw-semibold"></label>
+                        <input asp-for="Brand" class="form-control" />
+                        <span asp-validation-for="Brand" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Price" class="form-label fw-semibold"></label>
+                        <input asp-for="Price" type="number" step="10000" class="form-control" />
+                        <span asp-validation-for="Price" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="OriginalPrice" class="form-label fw-semibold"></label>
+                        <input asp-for="OriginalPrice" type="number" step="10000" class="form-control" />
+                        <span asp-validation-for="OriginalPrice" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ImageUrl" class="form-label fw-semibold"></label>
+                        <input asp-for="ImageUrl" class="form-control" />
+                        <span asp-validation-for="ImageUrl" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label asp-for="Badge" class="form-label fw-semibold"></label>
+                        <input asp-for="Badge" class="form-control" />
+                        <span asp-validation-for="Badge" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="col-md-3 d-flex align-items-center mt-4">
+                        <div class="form-check">
+                            <input asp-for="InStock" class="form-check-input" />
+                            <label asp-for="InStock" class="form-check-label fw-semibold"></label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Description" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Products" class="btn btn-outline-secondary">Hủy</a>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        💾 Cập Nhật Thay Đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,70 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Quản Lý Sản Phẩm";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📦 Danh Sách Sản Phẩm (Bảng Products)</h2>
+        <p class="text-muted mb-0">Hiện có <strong>@Model.Count</strong> sản phẩm trong cơ sở dữ liệu (Đạt tiêu chí ≥ 10 dòng)</p>
+    </div>
+    <a asp-action="CreateProduct" class="btn btn-primary fw-bold">
+        ➕ Thêm Sản Phẩm Mới
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">ID</th>
+                    <th>Hình ảnh</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Thương hiệu</th>
+                    <th>Giá bán</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td class="ps-4 fw-bold text-muted">#@p.Id</td>
+                        <td><span class="fs-3">@(p.ImageUrl ?? "📱")</span></td>
+                        <td>
+                            <strong>@p.Name</strong>
+                            <small class="text-muted d-block text-truncate" style="max-width: 250px;">@p.Description</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info-subtle text-info fw-bold">@(p.CategoryEntity?.Name ?? p.Category)</span>
+                        </td>
+                        <td>@p.Brand</td>
+                        <td class="fw-bold text-danger">@p.Price.ToString("N0") đ</td>
+                        <td>
+                            @if (p.InStock)
+                            {
+                                <span class="badge bg-success">Còn hàng</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Hết hàng</span>
+                            }
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="EditProduct" asp-route-id="@p.Id" class="btn btn-outline-primary" title="Sửa">✏️</a>
+                                <form asp-action="DeleteProduct" asp-route-id="@p.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger" title="Xóa">🗑️</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

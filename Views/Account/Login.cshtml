@@ -1,0 +1,85 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Đăng Nhập";
+}
+
+<div class="row justify-content-center my-4">
+    <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="card-header bg-gradient text-white text-center py-4" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+                <div class="fs-1 mb-2">🔐</div>
+                <h3 class="fw-bold mb-1">Đăng Nhập Hệ Thống</h3>
+                <small class="text-white-50">Truy cập để mua hàng hoặc quản lý hệ thống</small>
+            </div>
+            
+            <div class="card-body p-4 p-md-5 bg-white">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label asp-for="UserName" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">👤</span>
+                            <input asp-for="UserName" id="txtUsername" class="form-control py-2" placeholder="Nhập username" />
+                        </div>
+                        <span asp-validation-for="UserName" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">🔑</span>
+                            <input asp-for="Password" id="txtPassword" type="password" class="form-control py-2" placeholder="Nhập mật khẩu" />
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="mb-4 form-check d-flex justify-content-between align-items-center">
+                        <div>
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label text-muted small"></label>
+                        </div>
+                        <a asp-action="Register" class="small text-decoration-none text-primary">Chưa có tài khoản?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-gradient w-100 py-2 fs-6 rounded-3">
+                        Đăng Nhập
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top">
+                    <p class="small text-muted fw-bold mb-2">Tài khoản mẫu:</p>
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3" onclick="fillAccount('admin', 'Abc@123456')">
+                            <div>
+                                <span class="badge bg-danger me-1">Admin</span>
+                                <strong>admin</strong>
+                            </div>
+                            <span class="small text-muted">Pass: Abc@123456</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3" onclick="fillAccount('user_an', 'Abc@123456')">
+                            <div>
+                                <span class="badge bg-primary me-1">User</span>
+                                <strong>user_an</strong>
+                            </div>
+                            <span class="small text-muted">Pass: Abc@123456</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function fillAccount(u, p) {
+            document.getElementById('txtUsername').value = u;
+            document.getElementById('txtPassword').value = p;
+        }
+    </script>
+}

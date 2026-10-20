@@ -1,0 +1,126 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Trang Quản Trị Hệ Thống";
+}
+
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1">📊 Bảng Điều Khiển Quản Trị</h2>
+        <p class="text-muted mb-0">Xin chào, <strong>@User.Identity?.Name</strong> (Quyền: <span class="badge bg-danger">Admin</span>)</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a asp-action="CreateProduct" class="btn btn-primary fw-bold">
+            ➕ Thêm Sản Phẩm Mới
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">TỔNG SẢN PHẨM</span>
+                    <h3 class="fw-bold mt-1 mb-0 text-primary">@Model.TotalProducts</h3>
+                </div>
+                <div class="fs-1">📦</div>
+            </div>
+            <small class="text-success mt-2 d-block">Trong kho</small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">TỔNG DANH MỤC</span>
+                    <h3 class="fw-bold mt-1 mb-0 text-info">@Model.TotalCategories</h3>
+                </div>
+                <div class="fs-1">📁</div>
+            </div>
+            <small class="text-success mt-2 d-block">Đang hoạt động</small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">TỔNG NGƯỜI DÙNG</span>
+                    <h3 class="fw-bold mt-1 mb-0 text-success">@Model.TotalUsers</h3>
+                </div>
+                <div class="fs-1">👥</div>
+            </div>
+            <small class="text-muted mt-2 d-block">Trong đó có @Model.TotalAdmins Admin</small>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold">GIÁ TRỊ KHO HÀNG</span>
+                    <h3 class="fw-bold mt-1 mb-0 text-danger" style="font-size: 1.3rem;">@Model.TotalInventoryValue.ToString("N0") đ</h3>
+                </div>
+                <div class="fs-1">💰</div>
+            </div>
+            <small class="text-muted mt-2 d-block">Tổng giá trị sản phẩm</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">📦 Sản Phẩm Mới Cập Nhật</h5>
+                <a asp-action="Products" class="small fw-semibold text-decoration-none">Quản lý tất cả &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Tên sản phẩm</th>
+                            <th>Danh mục</th>
+                            <th>Giá bán</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.LatestProducts)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>@(p.ImageUrl ?? "📱")</span>
+                                        <strong>@p.Name</strong>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-light text-dark">@(p.CategoryEntity?.Name ?? p.Category)</span></td>
+                                <td class="text-danger fw-bold">@p.Price.ToString("N0") đ</td>
+                                <td>
+                                    <a asp-action="EditProduct" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary py-0">Sửa</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-4">
+            <h5 class="fw-bold mb-3">📁 Danh Mục & Sản Phẩm</h5>
+            <ul class="list-group list-group-flush">
+                @foreach (var c in Model.Categories)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                        <span>@c.Icon @c.Name</span>
+                        <span class="badge bg-primary rounded-pill">@(c.Products?.Count ?? 0)</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

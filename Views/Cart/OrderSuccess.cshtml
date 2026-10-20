@@ -1,0 +1,23 @@
+@{
+    ViewData["Title"] = "Đặt Hàng Thành Công";
+}
+
+<div class="row justify-content-center my-5">
+    <div class="col-md-7 text-center">
+        <div class="card border-0 shadow-sm rounded-4 p-5 bg-white">
+            <div class="display-1 text-success mb-3">🎉</div>
+            <h2 class="fw-extrabold text-success mb-2">Đặt Hàng Thành Công!</h2>
+            <p class="text-muted lead mb-4">
+                Cảm ơn bạn đã mua sắm tại <strong>Nexus Store</strong>. Đơn hàng của bạn đã được ghi nhận vào hệ thống và giỏ hàng phiên làm việc đã được làm mới.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary px-4 py-2">
+                    🏠 Về Trang Chủ
+                </a>
+                <a asp-controller="Product" asp-action="Index" class="btn btn-gradient px-4 py-2">
+                    🛍️ Tiếp Tục Mua Sắm
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

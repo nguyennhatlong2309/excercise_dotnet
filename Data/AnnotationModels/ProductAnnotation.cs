@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace examBlazor.Data.AnnotationModels;
 
-/// <summary>
-/// CÁCH 2: DATA ANNOTATION (Thuộc tính chú thích)
-/// </summary>
 [Table("tbl_Products")]
 public class ProductAnnotation
 {

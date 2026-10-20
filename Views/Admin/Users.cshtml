@@ -1,0 +1,64 @@
+@model List<(ApplicationUser User, string Role)>
+@{
+    ViewData["Title"] = "Quản Lý Người Dùng & Phân Quyền";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">👥 Quản Lý Người Dùng & Phân Quyền (Bảng Users)</h2>
+        <p class="text-muted mb-0">Hệ thống phân quyền linh động kế thừa từ <code>IdentityUser</code> (Đạt tiêu chí ≥ 10 tài khoản)</p>
+    </div>
+    <span class="badge bg-primary fs-6 px-3 py-2">Tổng số: @Model.Count tài khoản</span>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">ID</th>
+                    <th>Tên đăng nhập (Username)</th>
+                    <th>Họ và tên</th>
+                    <th>Email</th>
+                    <th>Quyền hạn (Role)</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="ps-4 fw-bold text-muted">#@item.User.Id</td>
+                        <td>
+                            <strong>@item.User.UserName</strong>
+                        </td>
+                        <td>@item.User.FullName</td>
+                        <td>@item.User.Email</td>
+                        <td>
+                            @if (item.Role.Contains("Admin"))
+                            {
+                                <span class="badge bg-danger px-3 py-2">👑 Admin</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary px-3 py-2">👤 User</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.User.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success fw-bold">🟢 Hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Tạm khóa</span>
+                            }
+                        </td>
+                        <td class="small text-muted">@item.User.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

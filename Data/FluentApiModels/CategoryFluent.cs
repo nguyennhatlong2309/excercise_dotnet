@@ -1,9 +1,11 @@
+/*
+ Ví dụ POCO Model cho Fluent API:
+ - Không dùng Attribute ([Table], [Key], [Required]).
+ - Cấu hình định nghĩa tập trung tại FluentApiDbContext.OnModelCreating().
+*/
+
 namespace examBlazor.Data.FluentApiModels;
 
-/// <summary>
-/// CÁCH 3: FLUENT API (Model POCO thuần)
-/// Xem cấu hình chi tiết trong FluentApiDbContext.cs
-/// </summary>
 public class CategoryFluent
 {
     public int Id { get; set; }

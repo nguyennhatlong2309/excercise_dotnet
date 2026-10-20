@@ -5,9 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace examBlazor.Services;
 
-/// <summary>
-/// ProductService: Truy vấn dữ liệu sản phẩm từ MySQL Database (ShopDB_Annotation) thông qua AnnotationDbContext
-/// </summary>
 public class ProductService
 {
     private readonly IDbContextFactory<AnnotationDbContext> _dbFactory;
@@ -93,6 +90,7 @@ public class ProductService
 
     private void EnsureInitialData(AnnotationDbContext db)
     {
+        db.Database.EnsureCreated();
         if (!db.CategoryAnnotations.Any())
         {
             var catPhone = new CategoryAnnotation { Name = "Điện thoại" };

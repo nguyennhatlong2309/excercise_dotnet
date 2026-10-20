@@ -1,9 +1,10 @@
+/*
+ Ví dụ POCO Model cho Fluent API:
+ - Khóa chính (Id) và khóa ngoại (CategoryId) ánh xạ qua FluentApiDbContext.
+*/
+
 namespace examBlazor.Data.FluentApiModels;
 
-/// <summary>
-/// CÁCH 3: FLUENT API (Model POCO thuần)
-/// Xem cấu hình chi tiết trong FluentApiDbContext.cs
-/// </summary>
 public class ProductFluent
 {
     public int Id { get; set; }
@@ -11,6 +12,7 @@ public class ProductFluent
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
+
     public int CategoryId { get; set; }
     public CategoryFluent Category { get; set; } = null!;
 }
