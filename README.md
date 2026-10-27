@@ -9,7 +9,7 @@ Dự án bài tập / đồ án được xây dựng theo chuẩn mô hình **AS
    - Đăng nhập phân quyền rõ rệt: Tài khoản quyền **Admin** tự động điều hướng về `/Admin/Dashboard`, quyền **User** điều hướng về `/Product`.
 3. **Kiểm tra Validation (Check Validation)**:
    - Data Annotations trên Model & ViewModel.
-   - Kiểm tra chặt chẽ `ModelState.IsValid` tại Controller.
+   - Kiểm tra chặt chẽ `ModelState.IsValid` tại Controller. 
    - Client-side validation với `jquery.validate.unobtrusive`.
 
 ---
